@@ -105,8 +105,8 @@ When you are cloning a Laravel project from GitHub, you have to :
    Way to create Authenticate Admin User 
    i) Create Admin login interface ✔
    ii) Create guards and providers for admin Authenticate ✔
-   iii) Run migration and create a role column in the users table 
-   iv) Create an admin user with tinker 
+   iii) Run migration and create a role column in the users table ✔
+   iv) Create an admin user with tinker ✔
    v) Create and Register middleware
    vi) Apply Form Validation and Authenticate the user 
 
@@ -167,3 +167,84 @@ When you are cloning a Laravel project from GitHub, you have to :
         ],
 
 8) To migrate the default user table: php artisan migrate 
+
+9) Create new role column in user table: php artisan make:migration alter_users_table 
+   <--add some new role column in user table-->
+
+   /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->integer('role')->default(1)->after('email');    
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('role'); 
+        });
+    }
+     <!-- #region After creating role columr you need to migrate the new column-->
+
+     migrate it : php artisan migrate 
+
+    10) add admin data into database using tiner through terminal 
+        php artisan tinker 
+
+        $model = new User();
+        $model->name = 'admin';
+        $model->email = 'admin@example.com';
+        $model->password = Hash::make('admin');
+        $model->role = 2;
+        $mode->save();
+
+        $model = new User();
+        $model->name = 'Bikesh Kumar Gupta';
+        $model->email = 'bikesh@example.com';
+        $model->password = Hash::make('admin');
+        $model->role = 1;
+        $mode->save();
+
+    11) Create new middleware Authenticate file http/middleware/authenticate.php
+     || Create your own AdminAuthenticate.php file 
+
+     /**
+     * Get the path the user should be redirected to when they are not authenticated.
+     */
+    protected function redirectTo(Request $request): ?string
+    {
+        return $request->expectsJson() ? null : route('admin.login');
+    }
+    protected function authenticate($request, array $guards)
+    {
+        if ($this->auth->guard('admin')->check()) {
+            return $this->auth->shouldUse('admin');
+        }
+
+        $this->unauthenticated($request, ['admin']);
+    }
+
+     || Create your own AdminRedirectAuthenticated.php file
+
+     /**
+     * Handle an incoming request.
+     *
+     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     */
+    public function handle(Request $request, Closure $next, string ...$guards): Response
+    {
+        if (Auth::guard('admin')->check()) {
+            return redirect()->route('admin.dashboard');
+        }
+        return $next($request);
+    }
+
+    12) Go in Kernal file and add AdminAuthenticated class and AdminRedirectAuthenticated class 
+    'admin.auth' => \App\Http\Middleware\AdminAuthenticated::class,
+    'admin.guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
